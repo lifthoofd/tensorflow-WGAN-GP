@@ -34,6 +34,9 @@ import tempfile
 from functools import partial
 from pathlib import Path
 
+import logging
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from absl import flags
@@ -209,7 +212,7 @@ class DatasetPipeline:
 
     def load_dataset(self):
         ds, self.dataset_info = tfds.load(name=self.dataset_name,
-                                          split=tfds.Split.ALL,
+                                          split=tfds.Split.TRAIN,
                                           with_info=True)
         ds = ds.map(lambda x: self.preprocess_image(x['image']), AUTOTUNE)
         ds = self.dataset_cache(ds)
