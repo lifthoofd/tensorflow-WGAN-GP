@@ -54,6 +54,7 @@ flags.DEFINE_string('output_dir', '.', 'Output directory.')
 flags.DEFINE_float('g_penalty', 10.0, 'Gradient penalty weight.')
 flags.DEFINE_integer('n_critic', 5, 'Critic updates per generator update.')
 flags.DEFINE_integer('n_samples', 64, 'Number of samples to generate.')
+flags.DEFINE_string('dataset_path', '/home/lifthoofd/projects/latent_space/tensorflow-WGAN-GP/datasets/test_128x128.npz', 'dataset path')
 flags.mark_flag_as_required('dataset')
 
 
@@ -61,9 +62,9 @@ def main(argv):
     del argv
 
     pipeline = models.DatasetPipeline()
-    dataset = pipeline.load_dataset()
+    dataset, total_images, str_labels = pipeline.load_dataset()
 
-    wgangp = models.WGANGP(dataset_info=pipeline.dataset_info)
+    wgangp = models.WGANGP(total_images=total_images)
     wgangp.train(dataset=dataset)
 
 

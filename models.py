@@ -33,6 +33,7 @@ from __future__ import unicode_literals
 import tempfile
 from functools import partial
 from pathlib import Path
+import numpy as np
 
 import logging
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
@@ -55,14 +56,14 @@ FLAGS = flags.FLAGS
 
 
 class WGANGP:
-    def __init__(self, dataset_info):
+    def __init__(self, total_images):
         self.z_dim = FLAGS.z_size
         self.epochs = FLAGS.epochs
         self.batch_size = FLAGS.batch_size
         self.image_size = FLAGS.image_size
         self.n_critic = FLAGS.n_critic
         self.grad_penalty_weight = FLAGS.g_penalty
-        self.total_images = dataset_info.splits.total_num_examples
+        self.total_images = total_images
         self.g_opt = ops.AdamOptWrapper(learning_rate=FLAGS.g_lr)
         self.d_opt = ops.AdamOptWrapper(learning_rate=FLAGS.d_lr)
         self.G = self.build_generator()
@@ -194,13 +195,13 @@ class DatasetPipeline:
         self.crop = FLAGS.crop
         self.dataset_info = {}
 
-    def preprocess_image(self, image):
+    def preprocess_image(self, image, label):
         if self.crop:
             image = tf.image.central_crop(image, 0.50)
         image = tf.image.resize(image, (self.image_size, self.image_size),
                                 antialias=True)
         image = (tf.dtypes.cast(image, tf.float32) / 127.5) - 1.0
-        return image
+        return image, label
 
     def dataset_cache(self, dataset):
         tmp_dir = Path(tempfile.gettempdir())
@@ -211,11 +212,21 @@ class DatasetPipeline:
         return dataset.cache(str(cache_dir / self.dataset_name))
 
     def load_dataset(self):
-        ds, self.dataset_info = tfds.load(name=self.dataset_name,
-                                          split=tfds.Split.TRAIN,
-                                          with_info=True)
-        ds = ds.map(lambda x: self.preprocess_image(x['image']), AUTOTUNE)
+        # ds, self.dataset_info = tfds.load(name=self.dataset_name,
+        #                                   split=tfds.Split.TRAIN,
+        #                                   with_info=True)
+        ds, total_images, str_labels = self._load_data(FLAGS.dataset_path)
+        ds = ds.map(lambda image, label: self.preprocess_image(image, label), AUTOTUNE)
         ds = self.dataset_cache(ds)
         ds = ds.shuffle(50000, reshuffle_each_iteration=True)
         ds = ds.batch(self.batch_size, drop_remainder=True).prefetch(AUTOTUNE)
-        return ds
+        return ds, total_images, str_labels
+
+    def _load_data(self, path):
+        dataset = np.load(path)
+        train_images = dataset['images']
+        train_labels = dataset['labels']
+        str_labels = dataset['str_labels']
+        # print(train_labels)
+        ds = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
+        return ds, train_images.shape[0], str_labels
