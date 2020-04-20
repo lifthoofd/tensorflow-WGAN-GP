@@ -201,6 +201,7 @@ class DatasetPipeline:
         image = tf.image.resize(image, (self.image_size, self.image_size),
                                 antialias=True)
         image = (tf.dtypes.cast(image, tf.float32) / 127.5) - 1.0
+        print('are we doing this???')
         return image, label
 
     def dataset_cache(self, dataset):
@@ -216,7 +217,7 @@ class DatasetPipeline:
         #                                   split=tfds.Split.TRAIN,
         #                                   with_info=True)
         ds, total_images, str_labels = self._load_data(FLAGS.dataset_path)
-        ds = ds.map(lambda image, label: self.preprocess_image(image, label), AUTOTUNE)
+        ds = ds.map(lambda im, label: self.preprocess_image(im, label), AUTOTUNE)
         ds = self.dataset_cache(ds)
         ds = ds.shuffle(50000, reshuffle_each_iteration=True)
         ds = ds.batch(self.batch_size, drop_remainder=True).prefetch(AUTOTUNE)
